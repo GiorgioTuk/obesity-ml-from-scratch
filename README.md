@@ -287,6 +287,7 @@ The whole notebook runs in about 20 seconds, and results are reproducible (fixed
 ├── images/                         # figures exported from the notebook
 ├── tools/export_figures.py         # regenerates images/ from the executed notebook
 ├── requirements.txt
+├── LICENSE
 └── README.md
 ```
 
@@ -310,3 +311,7 @@ extended it:
 Palechor, F. M., & de la Hoz Manotas, A. (2019). *Dataset for estimation of obesity levels based on eating habits and physical
 condition in individuals from Colombia, Peru and Mexico.* Data in Brief, 25. Distributed by the UCI Machine Learning Repository
 under the [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) license.
+
+## License
+
+The code is released under the [MIT License](LICENSE). The dataset in `data/` keeps its original CC BY 4.0 license.
