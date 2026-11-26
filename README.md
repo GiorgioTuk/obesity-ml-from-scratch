@@ -1,27 +1,76 @@
 # Obesity Level Estimation — ML Algorithms from Scratch
 
-Classic machine-learning algorithms implemented **from scratch with NumPy** and applied to the
-[Estimation of Obesity Levels Based on Eating Habits and Physical Condition](https://archive.ics.uci.edu/dataset/544/estimation+of+obesity+levels+based+on+eating+habits+and+physical+condition)
-dataset (UCI). scikit-learn is used only for metrics and to cross-check every from-scratch model against its library counterpart.
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/GiorgioTuk/obesity-ml-from-scratch/blob/main/obesity_ml_from_scratch.ipynb)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![NumPy only](https://img.shields.io/badge/models-NumPy%20only-orange)
 
-Homework for the *Fondamenti di Intelligenza Artificiale* (Foundations of AI) course, B.Sc., A.Y. 2023/24 — revised in 2026.
+Six classic machine-learning algorithms **implemented from first principles with NumPy**, evaluated on a real dataset with a
+sound methodology. The project also detects and measures a **target-leakage** problem hidden in the data.
 
 **Author:** Giorgio Tuccinardi
 
-| Task | Target | From-scratch models |
+## Goal
+
+Understand how core ML algorithms work by building them without ML libraries, and evaluate them the way it is done in
+practice:
+
+- **From scratch:** linear regression (closed form and gradient descent), a neural network with backpropagation, logistic
+  regression, K-Nearest Neighbors and a decision tree, all written with NumPy only.
+- **Verified:** each model is checked against its scikit-learn counterpart. KNN, the decision tree and linear regression give
+  identical predictions. The backpropagation gradients match a numerical gradient check.
+- **Sound evaluation:** train / validation / test split, pre-processing fitted on training data only, and hyperparameter tuning
+  on the validation set. The test set is used once, at the end.
+- **Data-aware:** the obesity label turns out to be a function of the BMI, so features that leak it are identified and removed.
+
+Dataset: [Estimation of Obesity Levels Based on Eating Habits and Physical Condition](https://archive.ics.uci.edu/dataset/544/estimation+of+obesity+levels+based+on+eating+habits+and+physical+condition)
+(UCI, 2111 people from Mexico, Peru and Colombia, 17 attributes). Two tasks: predict **`Weight`** (regression) and predict
+whether a person is **obese** (binary classification) from lifestyle and personal attributes.
+
+## Results at a glance
+
+![Final comparison](images/09_final_comparison.png)
+
+| Regression of `Weight` (test set) | RMSE [kg] | MAE [kg] | R² |
+|---|---|---|---|
+| Baseline (predict the mean) | 25.08 | 20.70 | 0.00 |
+| Linear regression (closed form = gradient descent) | 17.97 | 13.97 | 0.49 |
+| **Neural network** (64-32, ReLU) | **12.11** | **7.36** | **0.77** |
+
+| Obesity classification (test set) | Accuracy | F1 |
 |---|---|---|
-| Regression | `Weight` (kg) | Linear regression (closed form + ridge), linear regression (gradient descent), feed-forward neural network (backprop, mini-batch GD) |
-| Binary classification | obese vs. not obese | Logistic regression (GD + L2), K-Nearest Neighbors (Euclidean / Manhattan), decision tree (information gain) |
+| Baseline (majority class) | 0.527 | — |
+| Logistic regression | 0.744 | 0.758 |
+| Decision tree (max_depth 15, min_samples_split 10) | 0.898 | 0.892 |
+| **KNN** (k = 3, Manhattan) | **0.946** | **0.943** |
 
-Every model has documented hyperparameter tuning on a validation set. The full code, explanations and critical analysis are in
-[`obesity_ml_from_scratch.ipynb`](obesity_ml_from_scratch.ipynb). The notebook is committed with its outputs, so GitHub shows
-it already executed. The walkthrough below is a summary of one run.
+**Key findings**
+- The **neural network** clearly beats linear regression (R² 0.77 vs 0.49): weight depends on lifestyle in a non-linear way.
+- **KNN** is the best classifier. Part of its advantage comes from the data: 77% of the records were synthetically generated
+  with SMOTE, which interpolates between neighbouring points and favours neighbourhood-based methods.
+- **Logistic regression** is limited by its linear decision boundary, but it is the most interpretable model. Its
+  coefficients show which habits increase the estimated probability of obesity.
 
----
+## The leakage trap
+
+The obesity classes were assigned from the BMI (`Weight / Height²`). A single fixed rule, `BMI >= 30`, already reaches
+**99.7% accuracy** without learning anything. With `Weight` among the inputs, every classifier would look nearly perfect while
+learning nothing about eating habits:
+
+| Model | Correct setup | With the leaking feature |
+|---|---|---|
+| Logistic regression (accuracy) | 0.744 | 0.981 |
+| KNN (accuracy) | 0.946 | 0.971 |
+| Decision tree (accuracy) | 0.898 | 0.994 |
+| Linear regression (RMSE, kg) | 17.97 | 5.36 |
+
+So `Weight` is excluded from the classification features, and the obesity class from the regression features.
 
 ## Demo: a run of the notebook
 
-### 1. Data
+Terminal output and figures from one execution, section by section. Click a section to expand it.
+
+<details>
+<summary><b>1. Data</b></summary>
 
 ```text
 Shape: (2111, 17)
@@ -32,7 +81,10 @@ Shape after removing duplicates: (2087, 17)
 
 ![Class and weight distribution](images/01_data_distribution.png)
 
-### 2. Target leakage check
+</details>
+
+<details>
+<summary><b>2. Target leakage check</b></summary>
 
 The obesity class was assigned from the BMI (`Weight / Height²`), and the BMI ranges of the classes barely overlap:
 
@@ -52,7 +104,10 @@ Accuracy of the rule 'BMI >= 30' (no learning at all): 0.9971
 
 For this reason `Weight` is excluded from the classification features, and `NObeyesdad` from the regression features.
 
-### 3. Split
+</details>
+
+<details>
+<summary><b>3. Split</b></summary>
 
 ```text
 train: 1461  validation: 313  test: 313
@@ -61,7 +116,10 @@ train: 1461  validation: 313  test: 313
   obese rate in test      : 0.473
 ```
 
-### 4. Regression of `Weight`
+</details>
+
+<details>
+<summary><b>4. Regression of <code>Weight</code></b></summary>
 
 **Linear regression, closed form.** Tuning of the ridge penalty λ on the validation set:
 
@@ -120,7 +178,10 @@ Neural Network                  146.710  12.112   7.359  0.767
 Neural Network (sklearn check)  138.297  11.760   6.639  0.780
 ```
 
-### 5. Classification: obese vs. not obese
+</details>
+
+<details>
+<summary><b>5. Classification: obese vs. not obese</b></summary>
 
 ```text
 Majority-class accuracy on test: 0.5272
@@ -177,7 +238,10 @@ Decision Tree (sklearn check)          0.8978     0.8919  0.8919  0.8919
 
 ![Confusion matrices](images/08_confusion_matrices.png)
 
-### 6. How much does leakage inflate the results?
+</details>
+
+<details>
+<summary><b>6. How much does leakage inflate the results?</b></summary>
 
 The same models are retrained with the leaking feature put back (`Weight` for the classifiers, `NObeyesdad` for the regression):
 
@@ -189,25 +253,20 @@ Decision Tree                     accuracy         0.8978                0.9936
 Linear Regression (closed form)  RMSE [kg]        17.9688                5.3616
 ```
 
-### 7. Final comparison
+</details>
 
-![Final comparison](images/09_final_comparison.png)
+## Notebook vs README
 
----
-
-## Key takeaways
-
-- The **neural network** is the best regressor (R² 0.77 vs 0.49 for linear regression): weight depends on lifestyle attributes
-  in a non-linear way.
-- **KNN** is the best classifier (94.6% accuracy). Part of its advantage comes from the dataset itself: 77% of the records were
-  generated with SMOTE, which interpolates between neighbouring points.
-- **Logistic regression** is limited by its linear decision boundary (74.4%), but it is the most interpretable model.
-- The from-scratch KNN, decision tree and linear regression give exactly the same predictions as scikit-learn. Logistic
-  regression and the MLP get very close results.
-
-The full discussion is in the *Critical analysis* section of the notebook.
+- **This README** is the overview: goal, results, and a walkthrough of one run.
+- **[The notebook](obesity_ml_from_scratch.ipynb)** is the full technical document. It contains the theory behind each
+  algorithm (formulas included), all the code, every output and the complete critical analysis. GitHub shows it already
+  executed, and the *Open in Colab* badge runs it in the browser without installing anything.
 
 ## How to run
+
+**In the browser:** click *Open in Colab* above, then *Runtime → Run all*. The dataset is downloaded automatically.
+
+**Locally:**
 
 ```bash
 python -m venv .venv
@@ -223,26 +282,28 @@ The whole notebook runs in about 20 seconds, and results are reproducible (fixed
 
 ```
 .
-├── obesity_ml_from_scratch.ipynb   # the notebook (executed, with outputs)
+├── obesity_ml_from_scratch.ipynb   # full notebook: theory, code, outputs, critical analysis
 ├── data/ObesityDataSet.csv         # dataset (UCI id 544, CC BY 4.0)
 ├── images/                         # figures exported from the notebook
-├── tools/export_figures.py         # regenerates images/ from the notebook
+├── tools/export_figures.py         # regenerates images/ from the executed notebook
 ├── requirements.txt
 └── README.md
 ```
 
-## Changes from the original 2024 submission
+## Project history
 
-- **Target leakage removed.** The original reported 100% classification accuracy because `Height` and `Weight` were both inputs.
-- **Proper train / validation / test split** (70/15/15). Hyperparameters used to be chosen on the test set.
-- **Standardisation fitted on the training set only.** Before, the test set was standardised with its own statistics.
-- **Bugs fixed.** Logistic regression grid search returned the weights of the last combination instead of the best one.
-  The neural network applied ReLU to its regression output. KNN used unscaled features.
-- **Better encoding.** Ordinal attributes (`CAEC`, `CALC`) are now encoded as ordered integers. Duplicate records are removed.
-- **More tuning and checks.** Ridge penalty, L2 for logistic regression, KNN distance metric, `min_samples_split` for the tree.
-  Added a gradient check for backpropagation, baselines, and precision / recall / F1 / confusion matrices.
-- **Faster code.** KNN distances are vectorised and the tree's split search is vectorised (seconds instead of minutes).
-- **Reproducibility.** Fixed seed, local copy of the dataset, translated to English.
+This project started as a homework for the *Foundations of AI* course (B.Sc., A.Y. 2023/24). In 2026 I revised and
+extended it:
+
+- found and removed the target leakage, which made the original version report 100% classification accuracy;
+- introduced a train / validation / test split, so hyperparameters are no longer chosen on the test set;
+- fitted standardisation on the training set only;
+- fixed bugs: logistic-regression grid search kept the last weights instead of the best ones, the neural network applied ReLU
+  to its regression output, and KNN used unscaled features;
+- encoded ordinal attributes as ordered integers and removed duplicate records;
+- widened the hyperparameter search (ridge penalty, L2, KNN distance metric, tree pre-pruning);
+- added baselines, a numerical gradient check, and precision / recall / F1 / confusion matrices;
+- vectorised KNN and the decision-tree split search, so tuning takes seconds instead of minutes.
 
 ## Dataset
 
